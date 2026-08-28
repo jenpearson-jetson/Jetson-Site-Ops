@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "setup": "echo 'Static site — no dependencies to install.'",
+    "run": "python3 -m http.server 4321"
+  }
+}
