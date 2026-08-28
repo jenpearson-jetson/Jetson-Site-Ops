@@ -1,0 +1,10 @@
+# Secrets — never commit the Notion token
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# Node
+node_modules/

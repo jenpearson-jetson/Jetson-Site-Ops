@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Site Ops Launch Readiness</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -162,8 +163,30 @@ section{padding:34px 0}
 .rows{margin-top:6px}
 .row{display:grid;grid-template-columns:180px 1fr 96px;gap:16px;align-items:center;padding:13px 4px;border-top:1px solid var(--border)}
 .row:first-child{border-top:none}
-.row .idcell .code{font-family:var(--font-sub);font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px}
+.row .idcell .code{font-family:var(--font-sub);font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .row .idcell .loc{color:var(--ink-muted);font-size:12.5px;margin-top:2px}
+.gapbtn{margin-top:7px;font-family:var(--font-sub);font-weight:700;font-size:11.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.12s}
+.gapbtn:hover{border-color:var(--accent);color:var(--ink)}
+.gapbtn.done{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft);cursor:default}
+.gapbtn .n{font-variant-numeric:tabular-nums}
+
+/* incomplete-fields modal */
+.modal-back{position:fixed;inset:0;background:rgba(8,14,8,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+.modal-back.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border-strong);border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);max-width:520px;width:100%;max-height:82vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.modal-head .mh-code{font-family:var(--font-display);font-weight:900;font-size:22px;letter-spacing:.01em;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.modal-head .mh-sub{color:var(--ink-muted);font-size:13px;margin-top:4px}
+.modal-x{flex:none;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink-2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;line-height:1}
+.modal-x:hover{border-color:var(--accent);color:var(--ink)}
+.modal-body{padding:14px 20px 20px;overflow-y:auto}
+.modal-body .lead{font-size:13px;color:var(--ink-2);margin-bottom:12px}
+.gap-fields{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.gap-fields li{display:flex;align-items:center;gap:9px;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--border)}
+.gap-fields li .mk{flex:none;width:16px;height:16px;border-radius:5px;border:2px solid var(--serious);display:inline-block}
+.modal-body .alldone{display:flex;align-items:center;gap:10px;color:var(--accent-ink);font-family:var(--font-sub);font-weight:700}
+.modal-note{margin-top:14px;font-size:12px;color:var(--ink-muted);background:var(--surface-inset);border:1px solid var(--border);border-radius:9px;padding:9px 11px}
+@media (max-width:520px){.gap-fields{grid-template-columns:1fr}}
 .bar-wrap{position:relative}
 .bar-track{height:26px;background:var(--bar-track);border-radius:7px;overflow:hidden}
 .bar-fill{height:100%;background:var(--bar-fill);border-radius:7px;width:0;transition:width .9s cubic-bezier(.2,.7,.2,1)}
@@ -263,15 +286,15 @@ footer{border-top:1px solid var(--border);background:var(--surface);margin-top:2
       <div class="brand"><span class="wordmark">jetson<span class="dot">.</span></span>
         <span class="eyebrow">Market Expansion · Site Operations Master</span></div>
       <h1>Launch Readiness Dashboard</h1>
-      <p class="sub">Live view of all 13 warehouse &amp; HQ operations guides — completeness, open data-quality risks, structural gaps, and the actions still outstanding after the 26 Aug rebuild.</p>
+      <p class="sub">Live view of all Jetson warehouse &amp; HQ operations guides — completeness, open data-quality risks, structural gaps, and the actions still outstanding after the 26 Aug rebuild.</p>
       <div class="meta-row">
-        <span class="tag">📍 13 sites</span>
-        <span class="tag">🗂 139 fields / site</span>
-        <span class="tag">Data as of 26 Aug 2026</span>
+        <span class="tag" id="tagCount">📍 13 sites</span>
+        <span class="tag" id="tagSource" title="Where the site data on this page came from">⏳ Loading…</span>
         <span class="tag warnstripe">🔒 Confidential — internal</span>
       </div>
     </div>
     <div class="controls">
+      <button class="theme-toggle" id="refreshBtn" aria-label="Refresh live data" title="Pull the latest from Notion"><span>↻</span> Refresh</button>
       <button class="theme-toggle" id="themeBtn" aria-label="Toggle color theme"><span id="themeIcon">🌙</span> <span id="themeLbl">Dark</span></button>
     </div>
   </div>
@@ -288,7 +311,7 @@ footer{border-top:1px solid var(--border);background:var(--surface);margin-top:2
   <section id="sites">
     <div class="section-head">
       <h2>Completeness by site</h2>
-      <p class="note">Percentage the sheet's <code>Complete:</code> formula reports across 139 fields. Filter by launch status or search a code.</p>
+      <p class="note" id="sitesNote">Percentage the sheet's <code>Complete:</code> formula reports across 139 fields. Filter by launch status or search a code.</p>
     </div>
     <div class="panel panel-pad">
       <div class="filters" id="filters">
@@ -367,26 +390,47 @@ footer{border-top:1px solid var(--border);background:var(--surface);margin-top:2
 
 <div id="tip" role="status"></div>
 
+<div class="modal-back" id="gapModal" role="dialog" aria-modal="true" aria-labelledby="gapTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="mh-code" id="gapTitle"></div>
+        <div class="mh-sub" id="gapSub"></div>
+      </div>
+      <button class="modal-x" id="gapClose" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="gapBody"></div>
+  </div>
+</div>
+
 <script>
-const SITES=[
- {code:"CA-LAX-1",loc:"Burbank, CA",type:"Warehouse",status:"Live",fields:97,pct:69.8},
- {code:"MD-COL-1",loc:"Landover, MD",type:"Warehouse",status:"Prelaunch",fields:54,pct:38.8},
- {code:"CO-COS-1",loc:"Colorado Springs, CO",type:"Warehouse",status:"Launched",fields:50,pct:35.9},
- {code:"CO-LOV-1",loc:"Windsor, CO",type:"Warehouse",status:"Launched",fields:47,pct:33.8},
- {code:"CO-DEN-1",loc:"Centennial, CO",type:"HQ / Warehouse",status:"Launched",fields:42,pct:30.2},
- {code:"CA-SAC-1",loc:"West Sacramento, CA",type:"Rocket (shared)",status:"Launched",fields:39,pct:28.1},
- {code:"TN-NSH-1",loc:"Nashville, TN",type:"Warehouse",status:"Prelaunch",fields:35,pct:25.2},
- {code:"CA-SJO-1",loc:"San Jose, CA",type:"Warehouse",status:"unset",fields:21,pct:15.1},
- {code:"CA-LAX-2",loc:"Ontario, CA",type:"Warehouse",status:"unset",fields:20,pct:14.4},
- {code:"MA-MAS-1",loc:"Marlborough, MA",type:"Warehouse",status:"Launched",fields:20,pct:14.4},
- {code:"GA-ATL-1",loc:"Smyrna, GA",type:"Warehouse",status:"Prelaunch",fields:19,pct:13.7},
- {code:"NY-WPL-1",loc:"White Plains, NY",type:"Warehouse",status:"unset",fields:18,pct:12.9},
- {code:"BC-VAN-1",loc:"North Vancouver, BC",type:"HQ / Warehouse",status:"unset",fields:15,pct:10.8}
-];
-const STATUS_LABEL={Live:"Live",Launched:"Launched",Prelaunch:"Prelaunch",unset:"No status"};
-const STATUS_CLASS={Live:"live",Launched:"launched",Prelaunch:"prelaunch",unset:"unset"};
+// ---- 26 Aug audit snapshot: fallback data + the deep 139-field measure ----
+const SNAPSHOT_SITES=[
+ {code:"CA-LAX-1",loc:"Burbank, CA",type:"Warehouse",status:"Live",fields:97,total:139,pct:69.8},
+ {code:"MD-COL-1",loc:"Landover, MD",type:"Warehouse",status:"Prelaunch",fields:54,total:139,pct:38.8},
+ {code:"CO-COS-1",loc:"Colorado Springs, CO",type:"Warehouse",status:"Launched",fields:50,total:139,pct:35.9},
+ {code:"CO-LOV-1",loc:"Windsor, CO",type:"Warehouse",status:"Launched",fields:47,total:139,pct:33.8},
+ {code:"CO-DEN-1",loc:"Centennial, CO",type:"HQ / Warehouse",status:"Launched",fields:42,total:139,pct:30.2},
+ {code:"CA-SAC-1",loc:"West Sacramento, CA",type:"Rocket (shared)",status:"Launched",fields:39,total:139,pct:28.1},
+ {code:"TN-NSH-1",loc:"Nashville, TN",type:"Warehouse",status:"Prelaunch",fields:35,total:139,pct:25.2},
+ {code:"CA-SJO-1",loc:"San Jose, CA",type:"Warehouse",status:"unset",fields:21,total:139,pct:15.1},
+ {code:"CA-LAX-2",loc:"Ontario, CA",type:"Warehouse",status:"unset",fields:20,total:139,pct:14.4},
+ {code:"MA-MAS-1",loc:"Marlborough, MA",type:"Warehouse",status:"Launched",fields:20,total:139,pct:14.4},
+ {code:"GA-ATL-1",loc:"Smyrna, GA",type:"Warehouse",status:"Prelaunch",fields:19,total:139,pct:13.7},
+ {code:"NY-WPL-1",loc:"White Plains, NY",type:"Warehouse",status:"unset",fields:18,total:139,pct:12.9},
+ {code:"BC-VAN-1",loc:"North Vancouver, BC",type:"HQ / Warehouse",status:"unset",fields:15,total:139,pct:10.8}
+].map(s=>({...s,codeDisplay:s.code}));
+const SNAPSHOT={source:"snapshot",denom:139,sites:SNAPSHOT_SITES};
+
+// Canonical status styling — covers every Notion status value, not just the four in the snapshot.
+const STATUS_LABEL={Live:"Live",Launched:"Launched",Prelaunch:"Prelaunch","LOI Signed":"LOI Signed","Site Selection":"Site Selection",Closed:"Closed",unset:"No status"};
+const STATUS_CLASS={Live:"live",Launched:"launched",Prelaunch:"prelaunch","LOI Signed":"prelaunch","Site Selection":"launched",Closed:"unset",unset:"unset"};
 // Fixed segbar fills — light tints that carry dark text legibly in BOTH themes (count + legend give secondary encoding)
-const STATUS_COLOR={Live:"#3CD567",Launched:"#CBFF8A",Prelaunch:"#F0C64D",unset:"#F07A72"};
+const STATUS_COLOR={Live:"#3CD567",Launched:"#CBFF8A",Prelaunch:"#F0C64D","LOI Signed":"#F0C64D","Site Selection":"#CBD5C0",Closed:"#F07A72",unset:"#F07A72"};
+const STATUS_ORDER=["Live","Launched","Prelaunch","LOI Signed","Site Selection","Closed","unset"];
+
+// The data currently driving the page (snapshot until the live feed answers).
+let state={...SNAPSHOT};
 
 const RISKS=[
  {sev:"critical",title:"Plaintext credentials, reused across accounts",
@@ -447,55 +491,96 @@ const TASKS=[
  {t:"Resolve the seven risks above, in order",first:true,d:"Items 1 and 3 (dead sheet check, Burbank Water & Power) bite first."}
 ];
 
-/* ---------- render ---------- */
+/* ---------- render (driven by `state.sites`) ---------- */
 const $=s=>document.querySelector(s), el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
-const avg=(SITES.reduce((a,s)=>a+s.pct,0)/SITES.length);
-const noStatus=SITES.filter(s=>s.status==="unset").length;
-
-/* KPIs */
-const KPIS=[
- {num:"13",lbl:"Operations guides",desc:"3 filled → 13 rebuilt"},
- {num:avg.toFixed(1)+"%",lbl:"Avg completeness",desc:"Median site sits near 25%"},
- {num:"7",lbl:"Open data risks",desc:"Wrong data, not just missing",alert:true},
- {num:noStatus,lbl:"Sites with no status",desc:"Launch blocker on its own",alert:true},
- {num:"3",lbl:"Structural gaps",desc:"Fields missing on all 13"}
-];
-$("#kpis").append(...KPIS.map(k=>el("div","kpi"+(k.alert?" alert":""),
- `<div class="num">${k.num}</div><div class="lbl">${k.lbl}</div><div class="desc">${k.desc}</div>`)));
-
-/* leaderboard */
-const maxPct=Math.max(...SITES.map(s=>s.pct));
+const sLabel=s=>STATUS_LABEL[s]||s;
+const sClass=s=>STATUS_CLASS[s]||"launched";
+const sColor=s=>STATUS_COLOR[s]||"#CBD5C0";
 let curFilter="all", curSearch="";
+
+function renderKPIs(){
+  const S=state.sites, live=state.source==="notion";
+  const avg=S.length?S.reduce((a,s)=>a+s.pct,0)/S.length:0;
+  const noStatus=S.filter(s=>s.status==="unset").length;
+  const KPIS=[
+   {num:String(S.length),lbl:"Operations guides",desc:live?"Live from Notion":"3 filled → 13 rebuilt"},
+   {num:avg.toFixed(1)+"%",lbl:"Avg completeness",desc:live?`Core record fields (of ${state.denom})`:"139-field deep audit"},
+   {num:"7",lbl:"Open data risks",desc:"From the 26 Aug audit",alert:true},
+   {num:String(noStatus),lbl:"Sites with no status",desc:"Launch blocker on its own",alert:noStatus>0},
+   {num:"3",lbl:"Structural gaps",desc:"Fields missing on all sites"}
+  ];
+  const box=$("#kpis"); box.innerHTML="";
+  box.append(...KPIS.map(k=>el("div","kpi"+(k.alert?" alert":""),
+   `<div class="num">${k.num}</div><div class="lbl">${k.lbl}</div><div class="desc">${k.desc}</div>`)));
+}
+
+/* filter chips — rebuilt from the statuses actually present, search input preserved */
+function renderFilters(){
+  const S=state.sites, box=$("#filters");
+  box.querySelectorAll(".chip[data-status]").forEach(n=>n.remove());
+  const search=box.querySelector(".search");
+  const present=STATUS_ORDER.filter(k=>S.some(s=>s.status===k));
+  const chips=[["all",`All`,S.length],...present.map(k=>[k,sLabel(k),S.filter(s=>s.status===k).length])];
+  chips.forEach(([status,label,n])=>{
+    const c=el("button","chip",`${label} <span class="cnt">${n}</span>`);
+    c.dataset.status=status; c.setAttribute("aria-pressed",String(status===curFilter));
+    box.insertBefore(c,search);
+  });
+}
+
 function renderRows(){
   const box=$("#rows"); box.innerHTML="";
-  const list=SITES.filter(s=>{
+  const list=state.sites.slice().sort((a,b)=>b.pct-a.pct).filter(s=>{
     const mf=curFilter==="all"||s.status===curFilter;
-    const ms=!curSearch||(s.code+" "+s.loc).toLowerCase().includes(curSearch);
+    const ms=!curSearch||((s.codeDisplay||"")+" "+s.loc).toLowerCase().includes(curSearch);
     return mf&&ms;
   });
+  const maxPct=Math.max(1,...state.sites.map(s=>s.pct));
   if(!list.length){box.append(el("div",null,`<p style="color:var(--ink-muted);padding:18px 2px">No sites match.</p>`));return;}
   list.forEach(s=>{
     const hq=/HQ/.test(s.type)?`<span class="pill hq">HQ</span>`:"";
+    const incomplete=Math.max(0,s.total-s.fields);
+    const btn = incomplete===0
+      ? `<button class="gapbtn done" type="button" tabindex="-1">✓ All ${s.total} fields complete</button>`
+      : `<button class="gapbtn" type="button">◷ <span class="n">${incomplete}</span> incomplete — view</button>`;
     const row=el("div","row");
     row.innerHTML=`
       <div class="idcell">
-        <div class="code">${s.code} ${hq}<span class="pill ${STATUS_CLASS[s.status]}">${STATUS_LABEL[s.status]}</span></div>
+        <div class="code">${s.codeDisplay} ${hq}<span class="pill ${sClass(s.status)}">${sLabel(s.status)}</span></div>
         <div class="loc">${s.loc} · ${s.type}</div>
+        ${btn}
       </div>
-      <div class="bar-wrap" data-code="${s.code}">
+      <div class="bar-wrap">
         <div class="bar-track"><div class="bar-fill" style="width:0"></div></div>
-        <div class="bar-meta">${s.fields} of 139 fields</div>
+        <div class="bar-meta">${s.fields} of ${s.total} fields</div>
       </div>
-      <div class="pct">${s.pct}%<small>${s.fields} fields</small></div>`;
+      <div class="pct">${s.pct}%<small>${s.fields}/${s.total}</small></div>`;
     box.append(row);
     const fill=row.querySelector(".bar-fill");
     requestAnimationFrame(()=>{fill.style.width=(s.pct/maxPct*100)+"%";});
     const bw=row.querySelector(".bar-wrap");
-    bw.addEventListener("mousemove",e=>showTip(e,`<b>${s.code}</b> — ${s.loc}<br>${s.fields}/139 fields · ${s.pct}% complete<br>${STATUS_LABEL[s.status]}`));
+    bw.addEventListener("mousemove",e=>showTip(e,`<b>${s.codeDisplay}</b> — ${s.loc}<br>${s.fields}/${s.total} fields · ${s.pct}%<br>${sLabel(s.status)}`));
     bw.addEventListener("mouseleave",hideTip);
+    if(incomplete>0){ const gb=row.querySelector(".gapbtn"); gb.addEventListener("click",()=>openGaps(s)); }
   });
 }
-/* filters */
+
+/* status breakdown */
+function renderStatus(){
+  const S=state.sites, seg=$("#segbar"), leg=$("#seglegend");
+  seg.innerHTML=""; leg.innerHTML="";
+  const present=STATUS_ORDER.filter(k=>S.some(s=>s.status===k));
+  present.forEach((k,i)=>{
+    const n=S.filter(s=>s.status===k).length; if(!n)return;
+    const d=el("div","seg");
+    d.style.flex=n; d.style.background=sColor(k); d.style.color="#08120a";
+    d.style.marginLeft=i?"2px":"0"; d.textContent=n; d.title=`${sLabel(k)}: ${n}`;
+    seg.append(d);
+    leg.append(el("span",null,`<span class="dot" style="background:${sColor(k)}"></span>${sLabel(k)} — ${n}`));
+  });
+}
+
+/* filter click (delegated — survives chip rebuilds) + search */
 $("#filters").addEventListener("click",e=>{
   const c=e.target.closest(".chip[data-status]"); if(!c)return;
   document.querySelectorAll(".chip[data-status]").forEach(x=>x.setAttribute("aria-pressed","false"));
@@ -503,19 +588,50 @@ $("#filters").addEventListener("click",e=>{
 });
 $("#searchBox").addEventListener("input",e=>{curSearch=e.target.value.trim().toLowerCase();renderRows();});
 
-/* status breakdown */
-const order=["Live","Launched","Prelaunch","unset"];
-const counts=Object.fromEntries(order.map(k=>[k,SITES.filter(s=>s.status===k).length]));
-const seg=$("#segbar"), leg=$("#seglegend");
-order.forEach((k,i)=>{
-  const n=counts[k]; if(!n)return;
-  const d=el("div","seg");
-  d.style.flex=n; d.style.background=STATUS_COLOR[k];
-  d.style.color="#08120a";
-  d.style.marginLeft=i?"2px":"0"; d.textContent=n; d.title=`${STATUS_LABEL[k]}: ${n}`;
-  seg.append(d);
-  leg.append(el("span",null,`<span class="dot" style="background:${STATUS_COLOR[k]}"></span>${STATUS_LABEL[k]} — ${n}`));
-});
+/* apply a dataset (snapshot or live) and repaint. `preserveView` keeps the
+   user's active filter/search during background updates, and an unchanged
+   payload skips the heavy rebuild so real-time polling doesn't flicker. */
+let lastSig="";
+function applyData(data,opts){
+  opts=opts||{};
+  if(!opts.preserveView) curFilter="all";
+  const sig=data.source+"|"+JSON.stringify(data.sites);
+  state=data;
+  renderSourceTag();
+  if(opts.preserveView && sig===lastSig) return;   // nothing changed → no repaint
+  lastSig=sig;
+  renderKPIs(); renderFilters(); renderRows(); renderStatus();
+  const note=$("#sitesNote");
+  if(note) note.innerHTML = state.source==="notion"
+    ? `Live from the Notion <b>Site Operations Master</b> — share of the ${state.denom} structured record fields that are filled. The deep 139-field audit is the 26 Aug snapshot below.`
+    : `Percentage the sheet's <code>Complete:</code> formula reports across 139 fields. Filter by launch status or search a code.`;
+}
+
+function relTime(iso){
+  const s=Math.max(0,Math.round((Date.now()-new Date(iso).getTime())/1000));
+  if(s<5) return "just now";
+  if(s<60) return s+"s ago";
+  const m=Math.floor(s/60); if(m<60) return m+"m ago";
+  return Math.floor(m/60)+"h ago";
+}
+let polling=false;
+function renderSourceTag(){
+  const tag=$("#tagSource"), cnt=$("#tagCount");
+  if(cnt) cnt.textContent=`📍 ${state.sites.length} sites`;
+  if(!tag) return;
+  if(state.source==="notion"){
+    tag.textContent = polling
+      ? `🟢 Live · Notion · updating…`
+      : `🟢 Live · Notion · synced ${relTime(state.syncedAt)}`;
+    tag.classList.remove("warnstripe");
+  } else if(state.liveError){
+    tag.textContent="⚠️ Snapshot · live feed unavailable";
+    tag.classList.add("warnstripe");
+  } else {
+    tag.textContent="📄 Snapshot · 26 Aug 2026";
+    tag.classList.remove("warnstripe");
+  }
+}
 
 /* risks */
 $("#riskGrid").append(...RISKS.map(r=>{
@@ -567,6 +683,30 @@ const tip=$("#tip");
 function showTip(e,html){tip.innerHTML=html;tip.style.opacity="1";let x=e.clientX+14,y=e.clientY+14;if(x>innerWidth-250)x=e.clientX-250;tip.style.left=x+"px";tip.style.top=y+"px";}
 function hideTip(){tip.style.opacity="0";}
 
+/* per-site incomplete-fields modal */
+const gapModal=$("#gapModal");
+function openGaps(s){
+  const incomplete=Math.max(0,s.total-s.fields);
+  const hq=/HQ/.test(s.type)?`<span class="pill hq">HQ</span>`:"";
+  $("#gapTitle").innerHTML=`${s.codeDisplay} ${hq}<span class="pill ${sClass(s.status)}">${sLabel(s.status)}</span>`;
+  $("#gapSub").textContent=`${s.loc} · ${s.type} — ${s.fields}/${s.total} fields · ${s.pct}% complete`;
+  const body=$("#gapBody");
+  if(Array.isArray(s.missing)&&s.missing.length){
+    body.innerHTML=`<p class="lead"><b>${s.missing.length}</b> record ${s.missing.length===1?"field":"fields"} still to complete in Notion:</p>
+      <ul class="gap-fields">${s.missing.map(f=>`<li><span class="mk"></span>${f}</li>`).join("")}</ul>`;
+  } else if(s.missing && s.missing.length===0){
+    body.innerHTML=`<div class="alldone">✓ Every tracked record field is filled.</div>`;
+  } else {
+    body.innerHTML=`<p class="lead"><b>${incomplete}</b> of ${s.total} fields are still incomplete.</p>
+      <div class="modal-note">Field-by-field detail comes from the live Notion feed. This is the 26 Aug snapshot — connect the live feed (see the README) to list exactly which fields are missing.</div>`;
+  }
+  gapModal.classList.add("open"); $("#gapClose").focus();
+}
+function closeGaps(){gapModal.classList.remove("open");}
+$("#gapClose").addEventListener("click",closeGaps);
+gapModal.addEventListener("click",e=>{if(e.target===gapModal)closeGaps();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeGaps();});
+
 /* theme toggle */
 const root=document.documentElement, tBtn=$("#themeBtn");
 function sysDark(){return matchMedia("(prefers-color-scheme:dark)").matches;}
@@ -576,5 +716,60 @@ try{const saved=localStorage.getItem("jetson-siteops-theme");if(saved)root.setAt
 setLbl();
 tBtn.addEventListener("click",()=>{const d=!curDark();root.setAttribute("data-theme",d?"dark":"light");try{localStorage.setItem("jetson-siteops-theme",d?"dark":"light");}catch(e){}setLbl();});
 
-renderRows();
+/* ---------- live Notion feed (falls back to the snapshot) ---------- */
+function fromNotion(d){
+  return {
+    source:"notion", syncedAt:d.syncedAt, denom:d.coreTotal||23,
+    sites:(d.sites||[]).map(s=>({
+      code:s.code||s.codeDisplay, codeDisplay:s.codeDisplay||s.code||"—",
+      loc:[s.city,s.state].filter(Boolean).join(", ")||"—",
+      type:s.type||"—", status:s.status||"unset",
+      fields:s.fields, total:s.total, pct:s.pct, missing:s.missing||null
+    }))
+  };
+}
+const refreshBtn=$("#refreshBtn");
+const POLL_MS=60000;            // background refresh cadence
+let everLive=false, pollTimer=null;
+
+async function loadLive(opts){
+  opts=opts||{};
+  const background=!!opts.silent;
+  polling=true;
+  if(!background && refreshBtn) refreshBtn.disabled=true;
+  renderSourceTag();
+  try{
+    const r=await fetch("/api/sites",{headers:{Accept:"application/json"},cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    if(!d.sites||!d.sites.length) throw new Error("no sites");
+    const data=fromNotion(d); data.syncedAt=d.syncedAt||new Date().toISOString();
+    everLive=true;
+    polling=false;
+    applyData(data,{preserveView:everLive && (background || opts.keepView!==false)});
+  }catch(err){
+    polling=false;
+    // Background polls fail quietly (keep showing the last good live data).
+    // A manual/initial attempt with nothing live yet drops to the snapshot notice.
+    if(!background && !everLive){ state.liveError=true; }
+    renderSourceTag();
+  }finally{
+    if(!background && refreshBtn) refreshBtn.disabled=false;
+  }
+}
+
+function startPolling(){
+  if(pollTimer) return;
+  pollTimer=setInterval(()=>{ if(document.visibilityState==="visible") loadLive({silent:true}); }, POLL_MS);
+}
+/* keep the "synced Xs ago" label honest between polls */
+setInterval(()=>{ if(state.source==="notion" && !polling) renderSourceTag(); }, 1000);
+/* refresh the moment the tab regains focus */
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && everLive) loadLive({silent:true}); });
+
+if(refreshBtn) refreshBtn.addEventListener("click",()=>loadLive());
+
+/* boot: paint the snapshot immediately, try to go live, then poll in real time */
+applyData(SNAPSHOT);
+loadLive({keepView:false}).finally(startPolling);
 </script>
