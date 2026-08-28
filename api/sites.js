@@ -131,9 +131,9 @@ function computeChecks(sites) {
     burbankWaterPower: sites
       .filter((s) => /burbank water/i.test(s.waterPower || "") && s.code !== "CA-LAX-1")
       .map(code),
-    // Marked Launched/Live but the record is still mostly empty.
+    // Marked Launched/Live but the record is still mostly empty (< ~half filled).
     launchedButEmpty: sites
-      .filter((s) => ["Launched", "Live"].includes(s.status) && s.fields < 15)
+      .filter((s) => ["Launched", "Live"].includes(s.status) && s.fields < 12)
       .map(code),
     // No site code assigned yet.
     missingCode: sites.filter((s) => !has(s.code)).map(code),
