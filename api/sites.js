@@ -120,6 +120,38 @@ function mapSite(page) {
   };
 }
 
+// Live verification of the audit risks that can be checked from structured data.
+// Each returns the list of site codes currently in violation (empty = resolved).
+function computeChecks(sites) {
+  const code = (s) => s.codeDisplay || s.code || s.name;
+  const has = (v) => typeof v === "string" && v.trim() !== "";
+  const hostRe = /provided by|readyspaces|cubework/i;
+  return {
+    // "Burbank Water and Power" copied onto a site that isn't CA-LAX-1.
+    burbankWaterPower: sites
+      .filter((s) => /burbank water/i.test(s.waterPower || "") && s.code !== "CA-LAX-1")
+      .map(code),
+    // Marked Launched/Live but the record is still mostly empty.
+    launchedButEmpty: sites
+      .filter((s) => ["Launched", "Live"].includes(s.status) && s.fields < 15)
+      .map(code),
+    // No site code assigned yet.
+    missingCode: sites.filter((s) => !has(s.code)).map(code),
+    // Water & Power recorded but Gas Provider left blank.
+    gasBlank: sites.filter((s) => has(s.waterPower) && !has(s.gas)).map(code),
+    // Recorded as a plain Warehouse but utilities/services are host-supplied.
+    hostSuppliedType: sites
+      .filter(
+        (s) =>
+          hostRe.test([s.waterPower, s.gas, s.trash, s.cleaning, s.internet].join(" ")) &&
+          !/rocket|shared/i.test(s.type || "")
+      )
+      .map(code),
+    // No launch status set at all.
+    noStatus: sites.filter((s) => !s.status).map(code),
+  };
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
 
@@ -158,6 +190,7 @@ module.exports = async (req, res) => {
       noStatus: sites.filter((s) => !s.status).length,
       avgPct,
       statusCounts,
+      checks: computeChecks(sites),
       sites,
     });
   } catch (err) {

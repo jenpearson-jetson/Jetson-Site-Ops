@@ -214,7 +214,15 @@ section{padding:34px 0}
 .risk{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
 .risk .stripe{height:4px}
 .risk .rc{padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.risk .sevrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .risk .sev{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-sub);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:999px;width:max-content}
+.rverify{font-family:var(--font-sub);font-weight:700;font-size:10.5px;letter-spacing:.03em;padding:3px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+.rv-clear{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-soft)}
+.rv-flag{color:var(--serious);border-color:var(--serious);background:var(--serious-bg)}
+.rv-audit{color:var(--ink-muted);border-color:var(--border-strong);background:var(--surface-2)}
+.risk.resolved{opacity:.72}
+.risk.resolved h3{text-decoration:line-through;text-decoration-color:var(--gray-mid)}
+.mini.mini-ok{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-soft)}
 .sev-critical{color:var(--critical);background:var(--critical-bg)}
 .sev-serious{color:var(--serious);background:var(--serious-bg)}
 .sev-watch{color:var(--watch);background:var(--watch-bg)}
@@ -345,7 +353,7 @@ footer{border-top:1px solid var(--border);background:var(--surface);margin-top:2
   <section id="risks">
     <div class="section-head">
       <h2>Open risks — wrong data, not missing data</h2>
-      <p class="note">A blank field reads as work to do; a wrong field reads as done. These seven assert something false. Ordered by what bites first.</p>
+      <p class="note" id="risksNote">A blank field reads as work to do; a wrong field reads as done. These seven assert something false. Ordered by what bites first.</p>
     </div>
     <div class="risk-grid" id="riskGrid"></div>
   </section>
@@ -440,11 +448,11 @@ const RISKS=[
  {sev:"serious",title:"“Burbank Water and Power” propagated into five guides",
   body:"A Southern-California municipal utility copied out of the CA-LAX-1 template. It cannot serve Georgia, Massachusetts, San Jose, Ontario or West Sacramento — the real utility for each is still unknown.",
   action:"Left blank in the sheet with a Notes flag rather than importing a false value.",
-  affected:["GA-ATL-1","MA-MAS-1","CA-SJO-1","CA-LAX-2","CA-SAC-1"],owner:"Facilities"},
+  affected:["GA-ATL-1","MA-MAS-1","CA-SJO-1","CA-LAX-2","CA-SAC-1"],owner:"Facilities",check:"burbankWaterPower"},
  {sev:"serious",title:"MA-MAS-1 marked Launched but almost empty",
   body:"No GM, warehouse manager, landlord, WiFi, internet, utilities, trash, pest, cleaning, launch date or lease expiration. Either the status is wrong or the guide is badly behind the site.",
   action:"Reconcile status against reality; treat as highest-priority guide to backfill.",
-  affected:["MA-MAS-1"],owner:"General Manager"},
+  affected:["MA-MAS-1"],owner:"General Manager",check:"launchedButEmpty"},
  {sev:"watch",title:"Four sites' city does not match their code",
   body:"GA-ATL-1→Smyrna (~10mi), MD-COL-1→Landover (~20mi), CO-LOV-1→Windsor (~15mi), CA-SAC-1→West Sacramento. Likely the code names the market and the address the building — but the two disagree silently.",
   action:"Recorded the address city and flagged each conflict in Notes.",
@@ -452,17 +460,25 @@ const RISKS=[
  {sev:"watch",title:"BC-VAN-1 has no site code",
   body:"The only site without one. Title reads “Vancouver, BC (HQ) Warehouse Operations Guide” and the Site Name row is blank. BC-VAN-1 is a proposed code, nothing more.",
   action:"Site Code left empty in both records; confirm before it enters Slack or NetSuite.",
-  affected:["BC-VAN-1"],owner:"Expansion Lead"},
+  affected:["BC-VAN-1"],owner:"Expansion Lead",check:"missingCode"},
  {sev:"watch",title:"CO-LOV-1 names an electric co-op as its gas provider",
   body:"Section headed “Gas and Electric Utility” lists only PVREA (Poudre Valley REA), which is electric-only. No water provider is named anywhere on the guide.",
   action:"Recorded under Water & Power only; Gas Provider left blank.",
-  affected:["CO-LOV-1"],owner:"Facilities"},
+  affected:["CO-LOV-1"],owner:"Facilities",check:"gasBlank"},
  {sev:"watch",title:"Ambiguous site types at shared facilities",
   body:"CA-LAX-2 is a unit inside Cubework Ontario Airport; MD-COL-1 sits inside ReadySpaces Landover, which supplies its internet, cleaning, utilities and trash. Both recorded as Warehouse, but the model looks like CA-SAC-1's “Rocket (shared)”.",
   action:"Flag for reclassification pending Expansion Lead confirmation.",
-  affected:["CA-LAX-2","MD-COL-1"],owner:"Expansion Lead"}
+  affected:["CA-LAX-2","MD-COL-1"],owner:"Expansion Lead",check:"hostSuppliedType"}
 ];
 const SEV_LABEL={critical:"Critical · Security",serious:"Serious · Bites first",watch:"Watch"};
+const CHECK_LABEL={
+  burbankWaterPower:"Wrong Water & Power value present",
+  launchedButEmpty:"Launched but record still thin",
+  missingCode:"Site code still blank",
+  gasBlank:"Water & Power set, Gas blank",
+  hostSuppliedType:"Host-supplied but typed Warehouse",
+  noStatus:"No status set"
+};
 
 const GAPS=[
  {name:"Square Footage",all13:true,why:"Site Selection stage field — no row in the Notion template"},
@@ -600,7 +616,7 @@ function applyData(data,opts){
   renderSourceTag();
   if(opts.preserveView && sig===lastSig) return;   // nothing changed → no repaint
   lastSig=sig;
-  renderKPIs(); renderFilters(); renderRows(); renderStatus();
+  renderKPIs(); renderFilters(); renderRows(); renderStatus(); renderRisks();
   const note=$("#sitesNote");
   if(note) note.innerHTML = state.source==="notion"
     ? `Live from the Notion <b>Site Operations Master</b> — share of the ${state.denom} structured record fields that are filled. The deep 139-field audit is the 26 Aug snapshot below.`
@@ -633,21 +649,50 @@ function renderSourceTag(){
   }
 }
 
-/* risks */
-$("#riskGrid").append(...RISKS.map(r=>{
-  const c=el("div","risk");
-  c.innerHTML=`
-    <div class="stripe" style="background:var(--${r.sev})"></div>
-    <div class="rc">
-      <span class="sev sev-${r.sev}">${SEV_LABEL[r.sev]}</span>
-      <h3>${r.title}</h3>
-      <p>${r.body}</p>
-      <div class="affected">${r.affected.map(a=>`<span class="mini">${a}</span>`).join("")}</div>
-      <div class="action"><b>Action taken · </b>${r.action}</div>
-      <div class="owner">Owner <b>${r.owner}</b></div>
-    </div>`;
-  return c;
-}));
+/* risks — with live verification chips when the Notion feed is connected */
+function renderRisks(){
+  const grid=$("#riskGrid"); grid.innerHTML="";
+  const checks=state.source==="notion"?state.checks:null;
+  let verifiable=0, clear=0;
+  grid.append(...RISKS.map(r=>{
+    const c=el("div","risk");
+    // live verification
+    let verify="", affectedChips, resolved=false;
+    const live = checks && r.check && Array.isArray(checks[r.check]);
+    if(live){
+      verifiable++;
+      const hits=checks[r.check];
+      if(hits.length===0){ clear++; resolved=true;
+        verify=`<span class="rverify rv-clear">✓ Verified clear · live</span>`;
+        affectedChips=`<span class="mini mini-ok">no sites — resolved since 26 Aug</span>`;
+      } else {
+        verify=`<span class="rverify rv-flag">⚠ ${hits.length} affected · live</span>`;
+        affectedChips=hits.map(a=>`<span class="mini">${a}</span>`).join("");
+      }
+    } else {
+      verify=`<span class="rverify rv-audit">${r.check?"live-verifiable · connect feed":"26 Aug audit"}</span>`;
+      affectedChips=r.affected.map(a=>`<span class="mini">${a}</span>`).join("");
+    }
+    if(resolved) c.classList.add("resolved");
+    c.innerHTML=`
+      <div class="stripe" style="background:var(--${resolved?'accent':r.sev})"></div>
+      <div class="rc">
+        <div class="sevrow"><span class="sev sev-${r.sev}">${SEV_LABEL[r.sev]}</span>${verify}</div>
+        <h3>${r.title}</h3>
+        <p>${r.body}</p>
+        <div class="affected">${affectedChips}</div>
+        <div class="action"><b>${live?(resolved?"Now · ":"Live · "):"Action taken · "}</b>${live?(r.check&&CHECK_LABEL[r.check]?CHECK_LABEL[r.check]+". ":""):""}${r.action}</div>
+        <div class="owner">Owner <b>${r.owner}</b></div>
+      </div>`;
+    return c;
+  }));
+  const note=$("#risksNote");
+  if(note){
+    note.innerHTML = checks
+      ? `Live-verified against Notion: <b>${clear}/${verifiable}</b> auto-checkable ${verifiable===1?"risk":"risks"} currently clear. The rest are analytical findings from the 26 Aug audit.`
+      : `A blank field reads as work to do; a wrong field reads as done. These seven assert something false. Ordered by what bites first.`;
+  }
+}
 
 /* gaps */
 $("#gapList").append(...GAPS.map(g=>el("li",null,
@@ -719,7 +764,7 @@ tBtn.addEventListener("click",()=>{const d=!curDark();root.setAttribute("data-th
 /* ---------- live Notion feed (falls back to the snapshot) ---------- */
 function fromNotion(d){
   return {
-    source:"notion", syncedAt:d.syncedAt, denom:d.coreTotal||23,
+    source:"notion", syncedAt:d.syncedAt, denom:d.coreTotal||23, checks:d.checks||null,
     sites:(d.sites||[]).map(s=>({
       code:s.code||s.codeDisplay, codeDisplay:s.codeDisplay||s.code||"—",
       loc:[s.city,s.state].filter(Boolean).join(", ")||"—",
