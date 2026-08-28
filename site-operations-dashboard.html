@@ -749,9 +749,9 @@ async function loadLive(opts){
     applyData(data,{preserveView:everLive && (background || opts.keepView!==false)});
   }catch(err){
     polling=false;
-    // Background polls fail quietly (keep showing the last good live data).
-    // A manual/initial attempt with nothing live yet drops to the snapshot notice.
-    if(!background && !everLive){ state.liveError=true; }
+    // Background polls and the initial auto-load fail quietly to a clean
+    // "Snapshot" badge. Only a deliberate Refresh that fails flags a warning.
+    if(!background && !opts.initial){ state.liveError=true; }
     renderSourceTag();
   }finally{
     if(!background && refreshBtn) refreshBtn.disabled=false;
@@ -771,5 +771,5 @@ if(refreshBtn) refreshBtn.addEventListener("click",()=>loadLive());
 
 /* boot: paint the snapshot immediately, try to go live, then poll in real time */
 applyData(SNAPSHOT);
-loadLive({keepView:false}).finally(startPolling);
+loadLive({keepView:false,initial:true}).finally(startPolling);
 </script>
